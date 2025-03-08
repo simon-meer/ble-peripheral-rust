@@ -115,7 +115,7 @@ impl PeripheralImpl for Peripheral {
     ) -> Result<(), Error> {
         let mut services: BTreeSet<Uuid> = BTreeSet::new();
         for uuid in data.uuids {
-            services.insert(*uuid);
+            services.insert(uuid);
         }
 
         let le_advertisement = Advertisement {
@@ -152,7 +152,7 @@ impl PeripheralImpl for Peripheral {
                 uuids: uuids.to_vec(),
                 ..Default::default()
             },
-        )
+        ).await
     }
 
     async fn stop_advertising(&mut self) -> Result<(), Error> {
