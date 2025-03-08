@@ -16,6 +16,7 @@ use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::thread;
+use std::time::Duration;
 use tokio::runtime;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::oneshot;
@@ -190,16 +191,34 @@ impl PeripheralManager {
         value: Vec<u8>,
     ) -> Result<(), Error> {
         if let Some(char) = self.cached_characteristics.get(&characteristic) {
-            unsafe {
-                self.cb_peripheral_manager
-                    .updateValue_forCharacteristic_onSubscribedCentrals(
-                        &NSData::from_vec(value.clone()),
-                        char,
-                        None,
-                    );
+            for _ in 0..20 {
+                let success = unsafe {
+                    self.cb_peripheral_manager
+                        .updateValue_forCharacteristic_onSubscribedCentrals(
+                            &NSData::from_vec(value.clone()),
+                            char,
+                            None,
+                        )
+                };
+
+                if success {
+                    return Ok(());
+                } else {
+                    // Wait for queue to empty
+                    tokio::time::sleep(Duration::from_millis(1)).await;
+                }
             }
+
+            Err(Error::from_string(
+                "Failed to update characteristic".to_string(),
+                ErrorType::CoreBluetooth,
+            ))
+        } else {
+            Err(Error::from_string(
+                "Characteristic not found".to_string(),
+                ErrorType::CoreBluetooth,
+            ))
         }
-        return Ok(());
     }
 
     // Peripheral with cache value must only have Read permission, else it will crash

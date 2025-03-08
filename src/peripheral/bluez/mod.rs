@@ -158,19 +158,20 @@ impl PeripheralImpl for Peripheral {
         characteristic: Uuid,
         value: Vec<u8>,
     ) -> Result<(), Error> {
-        let writers = match self.writers.lock() {
-            Ok(w) => w,
-            Err(err) => return Err(Error::from_string(err.to_string(), ErrorType::Bluez)),
+        let writer = {
+            let writers = self.writers.lock().map_err(|err| {
+                Error::from_string(err.to_string(), ErrorType::Bluez)
+            })?;
+            writers.get(&characteristic).cloned()
         };
-        let writer = writers.get(&characteristic).cloned();
-        drop(writers);
-        tokio::spawn(async move {
-            if let Some(writer) = writer {
-                if let Err(err) = writer.send(&value).await {
-                    log::error!("Error sending value {err:?}")
-                }
-            }
-        });
+
+        if let Some(writer) = writer {
+            writer.send(&value).await.map_err(|err| {
+                log::error!("Error sending value {err:?}");
+                Error::from_string(err.to_string(), ErrorType::Bluez)
+            })?;
+        }
+
         Ok(())
     }
 }
