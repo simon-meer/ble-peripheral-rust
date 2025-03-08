@@ -15,7 +15,7 @@ pub use self::winrt::Peripheral;
 
 use crate::{
     error::Error,
-    gatt::{peripheral_event::PeripheralEvent, service::Service},
+    gatt::{peripheral_event::PeripheralEvent, service::Service, advertisement_data::AdvertisementData},
 };
 use async_trait::async_trait;
 use tokio::sync::mpsc::Sender;
@@ -32,6 +32,10 @@ pub trait PeripheralImpl: Send + Sync {
     async fn is_advertising(&mut self) -> Result<bool, Error>;
 
     async fn start_advertising(&mut self, name: &str, uuids: &[Uuid]) -> Result<(), Error>;
+    
+    async fn start_advertising_with_data(&mut self, name: &str, data: AdvertisementData) -> Result<(), Error> {
+        self.start_advertising(name, &data.uuids).await
+    }
 
     async fn stop_advertising(&mut self) -> Result<(), Error>;
 

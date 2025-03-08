@@ -1,6 +1,8 @@
 mod bluez_utils;
 mod characteristic_utils;
 
+use super::PeripheralImpl;
+use crate::gatt::advertisement_data::AdvertisementData;
 use crate::{
     error::{Error, ErrorType},
     gatt::{
@@ -26,8 +28,6 @@ use std::{
 };
 use tokio::sync::mpsc::Sender;
 use uuid::Uuid;
-
-use super::PeripheralImpl;
 
 #[derive(Debug)]
 pub struct Peripheral {
@@ -108,17 +108,20 @@ impl PeripheralImpl for Peripheral {
         return Ok(result > 0 && self.adv_handle.is_some());
     }
 
-    async fn start_advertising(&mut self, name: &str, uuids: &[Uuid]) -> Result<(), Error> {
-        let manufacturer_data = BTreeMap::new();
-
+    async fn start_advertising_with_data(
+        &mut self,
+        name: &str,
+        data: AdvertisementData,
+    ) -> Result<(), Error> {
         let mut services: BTreeSet<Uuid> = BTreeSet::new();
-        for uuid in uuids {
+        for uuid in data.uuids {
             services.insert(*uuid);
         }
 
         let le_advertisement = Advertisement {
             service_uuids: services,
-            manufacturer_data,
+            manufacturer_data: data.manufacturer_data,
+            service_data: data.service_data,
             discoverable: Some(true),
             local_name: Some(name.to_string()),
             ..Default::default()
@@ -142,6 +145,16 @@ impl PeripheralImpl for Peripheral {
         Ok(())
     }
 
+    async fn start_advertising(&mut self, name: &str, uuids: &[Uuid]) -> Result<(), Error> {
+        self.start_advertising_with_data(
+            name,
+            AdvertisementData {
+                uuids: uuids.to_vec(),
+                ..Default::default()
+            },
+        )
+    }
+
     async fn stop_advertising(&mut self) -> Result<(), Error> {
         self.adv_handle = None;
         self.app_handle = None;
@@ -159,9 +172,10 @@ impl PeripheralImpl for Peripheral {
         value: Vec<u8>,
     ) -> Result<(), Error> {
         let writer = {
-            let writers = self.writers.lock().map_err(|err| {
-                Error::from_string(err.to_string(), ErrorType::Bluez)
-            })?;
+            let writers = self
+                .writers
+                .lock()
+                .map_err(|err| Error::from_string(err.to_string(), ErrorType::Bluez))?;
             writers.get(&characteristic).cloned()
         };
 

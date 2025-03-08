@@ -3,3 +3,4 @@ pub mod descriptor;
 pub mod peripheral_event;
 pub mod properties;
 pub mod service;
+pub mod advertisement_data;
