@@ -207,6 +207,7 @@ impl Peripheral {
                         client: writer.device_address().to_string(),
                         service: handler.service_uuid,
                         characteristic: handler.characteristic_uuid,
+                        mtu: writer.mtu() as u16
                     };
 
                     if let Err(err) = sender_tx

@@ -26,7 +26,7 @@ use windows::{
 
 pub struct WinEventHandler {
     sender_tx: Sender<PeripheralEvent>,
-    connected_clients: Arc<RwLock<HashMap<(Uuid, Uuid), Vec<String>>>>,
+    connected_clients: Arc<RwLock<HashMap<(Uuid, Uuid), Vec<(String, u16)>>>>,
 }
 
 impl WinEventHandler {
@@ -89,14 +89,14 @@ impl WinEventHandler {
                 let subscribed_clients: IVectorView<GattSubscribedClient> =
                     characteristic.SubscribedClients().unwrap();
                     
-                let new_clients: Vec<String> = subscribed_clients
+                let new_clients: Vec<(String, u16)> = subscribed_clients
                     .into_iter()
-                    .map(|client| device_id_from_session(client.Session().unwrap()))
+                    .map(|client| (device_id_from_session(client.Session().unwrap()), client.Session().unwrap().MaxPduSize().unwrap()))
                     .collect();
 
                 let mut old_clients_store = connected_clients.write().unwrap();
-                let mut added_clients: Vec<String> = Vec::new();
-                let mut removed_clients: Vec<String> = Vec::new();
+                let mut added_clients: Vec<(String, u16)> = Vec::new();
+                let mut removed_clients: Vec<(String, u16)> = Vec::new();
 
                 if let Some(old_clients) = old_clients_store
                     .get_mut(&(service_uuid, to_uuid(&characteristic.Uuid().unwrap())))
@@ -121,13 +121,14 @@ impl WinEventHandler {
 
                 // Update Newly added/removed clients
                 futures::executor::block_on(async {
-                    for client in added_clients {
+                    for (client, mtu) in added_clients {
                         if let Err(err) = sender_tx
                             .send(PeripheralEvent::CharacteristicSubscriptionUpdate {
                                 request: PeripheralRequest {
                                     client,
                                     service: service_uuid,
                                     characteristic: characteristic_uuid,
+                                    mtu
                                 },
                                 subscribed: true,
                             })
@@ -137,13 +138,14 @@ impl WinEventHandler {
                         }
                     }
 
-                    for client in removed_clients {
+                    for (client, mtu) in removed_clients {
                         if let Err(err) = sender_tx
                             .send(PeripheralEvent::CharacteristicSubscriptionUpdate {
                                 request: PeripheralRequest {
                                     client,
                                     service: service_uuid,
                                     characteristic: characteristic_uuid,
+                                    mtu
                                 },
                                 subscribed: false,
                             })
@@ -181,6 +183,7 @@ impl WinEventHandler {
                                     client: device_id_from_session(event_args.Session().unwrap()),
                                     service: service_uuid,
                                     characteristic: to_uuid(&characteristic.Uuid().unwrap()),
+                                    mtu: event_args.Session().unwrap().MaxPduSize().unwrap()
                                 },
                                 offset: request.Offset().unwrap() as u64,
                                 responder: resp_tx,
@@ -238,6 +241,7 @@ impl WinEventHandler {
                                     client: device_id_from_session(event_args.Session().unwrap()),
                                     service: service_uuid,
                                     characteristic: char_uuid,
+                                    mtu: event_args.Session().unwrap().MaxPduSize().unwrap()
                                 },
                                 value: buffer_to_vec(&request.Value().unwrap()),
                                 offset: request.Offset().unwrap() as u64,

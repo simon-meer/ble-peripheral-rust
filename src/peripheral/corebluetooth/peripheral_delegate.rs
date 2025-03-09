@@ -99,6 +99,7 @@ declare_class!(
                         client: central.identifier().to_string(),
                         service: characteristic.service().unwrap().get_uuid(),
                         characteristic: characteristic.get_uuid(),
+                        mtu: central.maximumUpdateValueLength() as u16
                     },
                     subscribed: true,
                 });
@@ -122,6 +123,7 @@ declare_class!(
                     client: central.identifier().to_string(),
                     service: characteristic.service().unwrap().get_uuid(),
                     characteristic: characteristic.get_uuid(),
+                    mtu: central.maximumUpdateValueLength() as u16
                 },
                 subscribed: false,
             });
@@ -146,6 +148,7 @@ declare_class!(
                         client: central.identifier().to_string(),
                         service: characteristic.service().unwrap().get_uuid(),
                         characteristic: characteristic.get_uuid(),
+                        mtu: central.maximumUpdateValueLength() as u16
                     },
                     manager,
                     request,
@@ -171,12 +174,12 @@ declare_class!(
                     }
                     let central = request.central();
                     let characteristic = request.characteristic();
-
                     self.send_write_request(
                         PeripheralRequest{
                              client: central.identifier().to_string(),
                             service: characteristic.service().unwrap().get_uuid(),
                             characteristic: characteristic.get_uuid(),
+                            mtu: central.maximumUpdateValueLength() as u16
                         },
                         manager,
                         request,
