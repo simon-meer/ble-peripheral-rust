@@ -205,7 +205,8 @@ impl PeripheralManager {
             .services
             .values()
             .find_map(|service| service.characteristics.get(&characteristic).map(|c| &c.obj))
-            .expect("Characteristic not found");
+            .ok_or_else(|| Error::new(HRESULT(1), "Characteristic not found"))?;
+
         let notify_async = char.NotifyValueAsync(&vec_to_buffer(value))?;
         notify_async.await?;
         return Ok(());
