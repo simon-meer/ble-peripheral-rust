@@ -191,7 +191,7 @@ impl PeripheralManager {
         value: Vec<u8>,
     ) -> Result<(), Error> {
         if let Some(char) = self.cached_characteristics.get(&characteristic) {
-            for _ in 0..20 {
+            for _ in 0..100 {
                 let success = unsafe {
                     self.cb_peripheral_manager
                         .updateValue_forCharacteristic_onSubscribedCentrals(
