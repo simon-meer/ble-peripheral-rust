@@ -36,7 +36,7 @@ pub struct Peripheral {
     adv_handle: Option<AdvertisementHandle>,
     app_handle: Option<ApplicationHandle>,
     sender_tx: Sender<PeripheralEvent>,
-    writers: Arc<Mutex<HashMap<Uuid, Arc<CharacteristicWriter>>>>,
+    writers: Arc<Mutex<HashMap<Uuid, Vec<Arc<CharacteristicWriter>>>>>,
     _drop_tx: oneshot::Sender<()>,
 }
 
@@ -152,7 +152,8 @@ impl PeripheralImpl for Peripheral {
                 uuids: uuids.to_vec(),
                 ..Default::default()
             },
-        ).await
+        )
+        .await
     }
 
     async fn stop_advertising(&mut self) -> Result<(), Error> {
@@ -179,11 +180,13 @@ impl PeripheralImpl for Peripheral {
             writers.get(&characteristic).cloned()
         };
 
-        if let Some(writer) = writer {
-            writer.send(&value).await.map_err(|err| {
-                log::error!("Error sending value {err:?}");
-                Error::from_string(err.to_string(), ErrorType::Bluez)
-            })?;
+        if let Some(writers) = writer {
+            for wrt in writers {
+                wrt.send(&value).await.map_err(|err| {
+                    log::error!("Error sending value {err:?}");
+                    Error::from_string(err.to_string(), ErrorType::Bluez)
+                })?;
+            }
         }
 
         Ok(())
@@ -220,7 +223,10 @@ impl Peripheral {
                     }
 
                     if let Ok(mut writers_lock) = writers.lock() {
-                        writers_lock.insert(handler.characteristic_uuid, writer.clone());
+                        writers_lock
+                            .entry(handler.characteristic_uuid)
+                            .or_default()
+                            .push(writer.clone());
                     } else {
                         log::error!("Failed to lock writers for adding a writer");
                     }
