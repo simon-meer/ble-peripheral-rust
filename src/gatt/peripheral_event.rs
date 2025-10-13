@@ -48,4 +48,7 @@ pub enum RequestResponse {
     RequestNotSupported,
     InvalidOffset,
     UnlikelyError,
+    InsufficientAuthentication,
+    InsufficientAuthorization,
+    InvalidAttributeValueLength,
 }

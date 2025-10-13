@@ -353,6 +353,9 @@ impl RequestResponse {
             RequestResponse::RequestNotSupported => Some(ReqError::NotSupported),
             RequestResponse::InvalidOffset => Some(ReqError::InvalidOffset),
             RequestResponse::UnlikelyError => Some(ReqError::Failed),
+            RequestResponse::InsufficientAuthentication => Some(ReqError::NotPermitted),
+            RequestResponse::InsufficientAuthorization => Some(ReqError::NotAuthorized),
+            RequestResponse::InvalidAttributeValueLength => Some(ReqError::InvalidValueLength),
         }
     }
 }

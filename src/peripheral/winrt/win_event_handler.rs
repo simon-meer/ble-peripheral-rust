@@ -280,6 +280,9 @@ impl RequestResponse {
             RequestResponse::RequestNotSupported => GattProtocolError::RequestNotSupported(),
             RequestResponse::InvalidOffset => GattProtocolError::InvalidOffset(),
             RequestResponse::UnlikelyError => GattProtocolError::UnlikelyError(),
+            RequestResponse::InsufficientAuthentication => GattProtocolError::InsufficientAuthentication(),
+            RequestResponse::InsufficientAuthorization => GattProtocolError::InsufficientAuthorization(),
+            RequestResponse::InvalidAttributeValueLength => GattProtocolError::InvalidAttributeValueLength(),
         };
         if let Ok(value) = result {
             return value;

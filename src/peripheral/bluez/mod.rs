@@ -22,6 +22,7 @@ use bluer::{
 use bluez_utils::CharNotifyHandler;
 use characteristic_utils::parse_services;
 use futures::{channel::oneshot, StreamExt};
+use std::time::Duration;
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     sync::{Arc, Mutex},
@@ -181,23 +182,26 @@ impl PeripheralImpl for Peripheral {
         };
 
         if let Some(writers) = writer {
-            let mut i = 0;
+            let mut result = Ok(());
             for wrt in writers {
-                log::info!("Writing update to {i}");
-                wrt.send(&value).await.map_err(|err| {
-                    log::error!("Error sending value {err:?}");
-                    Error::from_string(err.to_string(), ErrorType::Bluez)
-                })?;
-
-                i += 1;
+                if let Err(e) = wrt.send(&value).await {
+                    log::error!("Error sending value {e:?}");
+                    result = Err(Error::from_string(e.to_string(), ErrorType::Bluez));
+                }
             }
-        }
 
-        Ok(())
+            result
+        } else {
+            Ok(())
+        }
     }
 }
 
 impl Peripheral {
+    pub fn adapter(&self) -> &Adapter {
+        &self.adapter
+    }
+
     // Handle Characteristic Subscriptions
     fn setup_char_handlers(&mut self, handlers: Vec<CharNotifyHandler>) {
         for mut handler in handlers {

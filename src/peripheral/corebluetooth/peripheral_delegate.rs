@@ -370,6 +370,9 @@ impl RequestResponse {
             RequestResponse::RequestNotSupported => CBATTError::RequestNotSupported,
             RequestResponse::InvalidOffset => CBATTError::InvalidOffset,
             RequestResponse::UnlikelyError => CBATTError::UnlikelyError,
+            RequestResponse::InsufficientAuthentication => CBATTError::InsufficientAuthentication,
+            RequestResponse::InsufficientAuthorization => CBATTError::InsufficientAuthorization,
+            RequestResponse::InvalidAttributeValueLength => CBATTError::InvalidAttributeValueLength,
         }
     }
 }
