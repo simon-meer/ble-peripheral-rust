@@ -181,11 +181,15 @@ impl PeripheralImpl for Peripheral {
         };
 
         if let Some(writers) = writer {
+            let mut i = 0;
             for wrt in writers {
+                log::info!("Writing update to {i}");
                 wrt.send(&value).await.map_err(|err| {
                     log::error!("Error sending value {err:?}");
                     Error::from_string(err.to_string(), ErrorType::Bluez)
                 })?;
+
+                i += 1;
             }
         }
 
@@ -231,25 +235,29 @@ impl Peripheral {
                         log::error!("Failed to lock writers for adding a writer");
                     }
 
-                    if let Err(err) = writer.closed().await {
-                        log::error!("NotifyClosedErr {err:?}");
-                    }
+                    let writers = writers.clone();
+                    let sender_tx = sender_tx.clone();
+                    tokio::spawn(async move {
+                        if let Err(err) = writer.closed().await {
+                            log::error!("NotifyClosedErr {err:?}");
+                        }
 
-                    if let Ok(mut writers_lock) = writers.lock() {
-                        writers_lock.remove(&handler.characteristic_uuid);
-                    } else {
-                        log::error!("Failed to lock writers for removing a writer");
-                    }
+                        if let Ok(mut writers_lock) = writers.lock() {
+                            writers_lock.remove(&handler.characteristic_uuid);
+                        } else {
+                            log::error!("Failed to lock writers for removing a writer");
+                        }
 
-                    if let Err(err) = sender_tx
-                        .send(PeripheralEvent::CharacteristicSubscriptionUpdate {
-                            request: peripheral_request,
-                            subscribed: false,
-                        })
-                        .await
-                    {
-                        log::error!("Error sending read request event: {:?}", err);
-                    }
+                        if let Err(err) = sender_tx
+                            .send(PeripheralEvent::CharacteristicSubscriptionUpdate {
+                                request: peripheral_request,
+                                subscribed: false,
+                            })
+                            .await
+                        {
+                            log::error!("Error sending read request event: {:?}", err);
+                        }
+                    });
                 }
             });
         }
